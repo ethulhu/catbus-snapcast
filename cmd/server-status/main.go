@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
-	"net"
 
 	"github.com/ethulhu/go-snapcast"
 )
@@ -22,15 +22,18 @@ func main() {
 	}
 	snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
 
-	conn, err := net.Dial("tcp", snapserverAddr)
-	if err != nil {
-		log.Fatalf("could not dial %v: %v", snapserverAddr, err)
-	}
-	defer conn.Close()
+	client := snapcast.Dial("tcp", snapserverAddr)
+	defer client.Close()
 
-	client := snapcast.NewClient(conn)
+	client.SetConnectHandler(func() {
+		log.Print("connected")
+	})
+	client.SetErrorHandler(func(err error) {
+		log.Printf("client error: %v", err)
+	})
 
-	groups, err := client.Groups()
+	ctx := context.Background()
+	groups, err := client.Groups(ctx)
 	if err != nil {
 		log.Fatalf("could not get groups: %v", err)
 	}
@@ -47,7 +50,7 @@ func main() {
 		fmt.Println()
 	}
 
-	streams, err := client.Streams()
+	streams, err := client.Streams(ctx)
 	if err != nil {
 		log.Fatalf("could not get streams: %v", err)
 	}

@@ -1,7 +1,5 @@
 package snapcast
 
-// https://github.com/badaix/snapcast/blob/master/doc/json_rpc_api/v2_0_0.md.
-
 type (
 	// common structs.
 

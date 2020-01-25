@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
-	"net"
 
 	"github.com/ethulhu/go-snapcast"
 )
@@ -23,21 +23,23 @@ func main() {
 	if *snapserverHost == "" {
 		log.Fatal("must set -snapserver-host")
 	}
-	snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
-
 	if *groupName == "" || *stream == "" {
 		log.Fatal("must set -group and -stream")
 	}
 
-	conn, err := net.Dial("tcp", snapserverAddr)
-	if err != nil {
-		log.Fatalf("could not dial %v: %v", snapserverAddr, err)
-	}
-	defer conn.Close()
+	snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+	client := snapcast.Dial("tcp", snapserverAddr)
+	defer client.Close()
 
-	client := snapcast.NewClient(conn)
+	client.SetConnectHandler(func() {
+		log.Print("connected")
+	})
+	client.SetErrorHandler(func(err error) {
+		log.Printf("client error: %v", err)
+	})
 
-	groups, err := client.Groups()
+	ctx := context.Background()
+	groups, err := client.Groups(ctx)
 	if err != nil {
 		log.Fatalf("could not get groups: %v", err)
 	}
@@ -52,7 +54,7 @@ func main() {
 		log.Fatalf("could not find group %v", *groupName)
 	}
 
-	if err := client.SetStream(id, snapcast.Stream(*stream)); err != nil {
+	if err := client.SetStream(ctx, id, snapcast.Stream(*stream)); err != nil {
 		log.Fatalf("could not set stream: %v", err)
 	}
 }

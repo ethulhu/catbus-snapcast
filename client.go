@@ -1,28 +1,31 @@
 package snapcast
 
 import (
+	"context"
 	"fmt"
-	"io"
 
 	"github.com/ethulhu/go-snapcast/jsonrpc2"
 )
 
 type (
 	client struct {
-		rpcClient jsonrpc2.Client
+		jsonrpc2.Client
 	}
 )
 
-// NewClient returns a Snapcast Snapserver client.
-func NewClient(conn io.ReadWriter) Client {
+// Dial returns a Snapcast Snapserver client.
+//
+// It is non-blocking, as it handles connecting and re-connecting itself.
+// To close the client, explicitly call Close().
+func Dial(network, addr string) Client {
 	return &client{
-		rpcClient: jsonrpc2.NewClient(conn),
+		jsonrpc2.Dial(network, addr),
 	}
 }
 
-func (c *client) Groups() ([]Group, error) {
+func (c *client) Groups(ctx context.Context) ([]Group, error) {
 	rsp := serverGetStatusResponse{}
-	if err := c.rpcClient.Call(serverGetStatus, nil, &rsp); err != nil {
+	if err := c.Client.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
 		return nil, fmt.Errorf("could not get server status: %w", err)
 	}
 
@@ -49,9 +52,9 @@ func (c *client) Groups() ([]Group, error) {
 	return groups, nil
 }
 
-func (c *client) Streams() ([]Stream, error) {
+func (c *client) Streams(ctx context.Context) ([]Stream, error) {
 	rsp := serverGetStatusResponse{}
-	if err := c.rpcClient.Call(serverGetStatus, nil, &rsp); err != nil {
+	if err := c.Client.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
 		return nil, fmt.Errorf("could not get server status: %w", err)
 	}
 
@@ -62,13 +65,13 @@ func (c *client) Streams() ([]Stream, error) {
 	return streams, nil
 }
 
-func (c *client) SetGroupName(id, name string) error {
+func (c *client) SetGroupName(ctx context.Context, id, name string) error {
 	req := groupSetNameRequest{
 		ID:   id,
 		Name: name,
 	}
 	rsp := groupSetNameResponse{}
-	if err := c.rpcClient.Call(groupSetName, req, &rsp); err != nil {
+	if err := c.Client.Call(ctx, groupSetName, req, &rsp); err != nil {
 		return fmt.Errorf("could not set group name: %w", err)
 	}
 	if rsp.Name != name {
@@ -77,13 +80,13 @@ func (c *client) SetGroupName(id, name string) error {
 	return nil
 }
 
-func (c *client) SetStream(groupID string, stream Stream) error {
+func (c *client) SetStream(ctx context.Context, groupID string, stream Stream) error {
 	req := groupSetStreamRequest{
 		ID:     groupID,
 		Stream: stream,
 	}
 	rsp := groupSetStreamResponse{}
-	if err := c.rpcClient.Call(groupSetStream, req, &rsp); err != nil {
+	if err := c.Client.Call(ctx, groupSetStream, req, &rsp); err != nil {
 		return fmt.Errorf("could not set stream: %w", err)
 	}
 	if rsp.Stream != stream {
