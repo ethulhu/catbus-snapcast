@@ -82,12 +82,8 @@ func Dial(network, addr string) Client {
 			}
 
 			wg.Wait()
-			c.conn.Close()
-
-			if c.errorHandler != nil {
-				go c.errorHandler(nil)
-			}
 		}
+		close(c.errorChan)
 	}()
 
 	return c
@@ -98,7 +94,6 @@ func (c *client) SetErrorHandler(f func(error)) { c.errorHandler = f }
 
 func (c *client) Close() {
 	c.closed = true
-	close(c.errorChan)
 	close(c.requestChan)
 }
 
@@ -116,13 +111,17 @@ func (c *client) readLoop(connectionClosed chan struct{}) {
 	for {
 		data, err := reader.ReadBytes('\n')
 		if err != nil {
-			c.errorChan <- fmt.Errorf("could not receive response: %w", err)
+			// if we've been closed, we expect errors.
+			if !c.closed {
+				c.errorChan <- fmt.Errorf("could not receive response: %w", err)
+			}
 			return
 		}
 
 		rsp := &response{}
 		if err := json.Unmarshal(data, rsp); err == nil && rsp.ID != nil {
 			c.Lock()
+			// if noöne requested it, throw it away.
 			if ch, ok := c.responseChans[*rsp.ID]; ok {
 				ch <- rsp
 				close(ch)
