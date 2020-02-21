@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ethulhu/go-snapcast/jsonrpc2"
+	"github.com/ethulhu/mqtt-snapcast-bridge/jsonrpc2"
 )
 
 type (

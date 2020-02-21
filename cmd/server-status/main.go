@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ethulhu/go-snapcast"
+	"github.com/ethulhu/mqtt-snapcast-bridge/snapcast"
 )
 
 var (

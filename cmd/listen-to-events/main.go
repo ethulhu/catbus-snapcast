@@ -4,11 +4,21 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ethulhu/go-snapcast/jsonrpc2"
+	"github.com/ethulhu/mqtt-snapcast-bridge/jsonrpc2"
+)
+
+var (
+	host = flag.String("host", "", "host of Snapserver")
+	port = flag.Uint("port", 0, "port of Snapserver")
 )
 
 func main() {
-	client := jsonrpc2.Dial("tcp", "valkyrie.local:1705")
+	if *host == "" || *port == 0 {
+		log.Fatal("must set -host and -port")
+	}
+	addr := fmt.Sprintf("%v:%v", *host, *port)
+
+	client := jsonrpc2.Dial("tcp", addr)
 	defer client.Close()
 
 	client.SetConnectHandler(func() {

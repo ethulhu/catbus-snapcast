@@ -1,3 +1,3 @@
-module github.com/ethulhu/go-snapcast
+module github.com/ethulhu/mqtt-snapcast-bridge
 
 go 1.13
