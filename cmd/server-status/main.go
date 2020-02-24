@@ -41,7 +41,9 @@ func main() {
 			fmt.Printf("  stream: %v\n", g.Stream)
 			fmt.Printf("  speakers:\n")
 			for _, c := range g.Speakers {
-				fmt.Printf("  - %v\n", c.Name)
+				fmt.Printf("  - name: %v\n", c.Name)
+				fmt.Printf("    muted: %v\n", c.Volume.Muted)
+				fmt.Printf("    volume: %v%%\n", c.Volume.Percent)
 			}
 			fmt.Println()
 		}
