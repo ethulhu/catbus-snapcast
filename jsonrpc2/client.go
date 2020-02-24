@@ -18,8 +18,8 @@ type (
 
 		addr string
 
-		closed bool
-		conn   io.ReadWriteCloser
+		connected bool
+		conn      io.ReadWriteCloser
 
 		sequence int
 
@@ -49,8 +49,16 @@ func NewClient(addr string) Client {
 	}
 }
 
+func (c *client) SetConnectHandler(f func())         { c.connectHandler = f }
+func (c *client) SetDisconnectHandler(f func(error)) { c.disconnectHandler = f }
+func (c *client) SetNotificationHandler(f func(string, json.RawMessage)) {
+	c.notificationHandler = f
+}
+
 func (c *client) Connect() {
-	for !c.closed {
+	c.connected = true
+
+	for {
 		conn, err := net.Dial("tcp", c.addr)
 		if err != nil {
 			log.Printf("could not connect, sleeping and trying again")
@@ -80,17 +88,6 @@ func (c *client) Connect() {
 	}
 }
 
-func (c *client) SetConnectHandler(f func())         { c.connectHandler = f }
-func (c *client) SetDisconnectHandler(f func(error)) { c.disconnectHandler = f }
-func (c *client) SetNotificationHandler(f func(string, json.RawMessage)) {
-	c.notificationHandler = f
-}
-
-func (c *client) Close() {
-	c.closed = true
-	close(c.requestChan)
-}
-
 func (c *client) readLoop(connectionClosed chan struct{}) {
 	defer close(connectionClosed)
 	defer func() {
@@ -101,6 +98,7 @@ func (c *client) readLoop(connectionClosed chan struct{}) {
 			delete(c.responseChans, id)
 		}
 	}()
+
 	reader := bufio.NewReader(c.conn)
 	for {
 		data, err := reader.ReadBytes('\n')
@@ -139,10 +137,6 @@ func (c *client) writeLoop(connectionClosed chan struct{}) {
 	for {
 		select {
 		case req := <-c.requestChan:
-			if req == nil {
-				return // c.Close() was called.
-			}
-
 			packet, err := json.Marshal(req)
 			if err != nil {
 				panic(fmt.Sprintf("could not marshal request: %v", err))
@@ -159,8 +153,8 @@ func (c *client) writeLoop(connectionClosed chan struct{}) {
 }
 
 func (c *client) Call(ctx context.Context, method string, params interface{}, result interface{}) error {
-	if c.closed {
-		return ErrClosed
+	if !c.connected {
+		panic("called jsonrpc2.Client.Call before jsonrpc2.Client.Connect")
 	}
 
 	id, ch := c.newRequest()

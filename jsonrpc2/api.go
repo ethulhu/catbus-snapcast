@@ -35,36 +35,20 @@ import (
 type (
 	// Client is a JSON-RPC 2.0 client.
 	Client interface {
-		// Call performs a JSON-RPC 2.0 method call.
-		Call(ctx context.Context, method string, input interface{}, output interface{}) error
-
-		// SetNotificationHandler sets the callback JSON-RPC 2.0 notifications.
-		SetNotificationHandler(func(method string, payload json.RawMessage))
-
-		// SetConnectHandler sets the handler that will be called for each successful connection.
-		SetConnectHandler(func())
-
-		// SetDisconnectHandler sets the handler that will be called for each disconnection.
-		SetDisconnectHandler(func(error))
-
 		// Connect connects and blocks forever, reconnecting as needed.
 		Connect()
 
-		// Close closes the client, rendering it inert and stopping reconnect attempts.
-		Close()
-	}
+		// SetConnectHandler sets the handler that will be called for each successful connection.
+		SetConnectHandler(func())
+		// SetDisconnectHandler sets the handler that will be called for each disconnection.
+		SetDisconnectHandler(func(error))
 
-	// NotificationHandler is a callback function for Client.SetNotificationHandler.
-	//
-	// The argument is the notification's params, encoded as per encoding/json:
-	//
-	//   bool, for JSON booleans
-	//   float64, for JSON numbers
-	//   string, for JSON strings
-	//   []interface{}, for JSON arrays
-	//   map[string]interface{}, for JSON objects
-	//   nil for JSON null
-	NotificationHandler func(interface{})
+		// Call performs a JSON-RPC 2.0 method call.
+		Call(ctx context.Context, method string, input interface{}, output interface{}) error
+
+		// SetNotificationHandler sets the callback for JSON-RPC 2.0 notifications.
+		SetNotificationHandler(func(method string, payload json.RawMessage))
+	}
 
 	// RemoteError is an error returned by the server in response to an RPC.
 	RemoteError struct {
@@ -76,9 +60,6 @@ type (
 var (
 	// ErrDisconnected is returned when a Call is cancelled by network disconnection.
 	ErrDisconnected = errors.New("disconnected while waiting for response")
-
-	// ErrClosed is returned when trying to call Call on a Client that has been closed.
-	ErrClosed = errors.New("client has been closed")
 )
 
 func (e *RemoteError) Error() string {
