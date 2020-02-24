@@ -34,6 +34,8 @@ type (
 
 const (
 	protocolVersion = "2.0"
+
+	reconnectionDelay = 5 * time.Second
 )
 
 // Dial returns a new JSON-RPC 2.0 client.
@@ -61,8 +63,8 @@ func (c *client) Connect() {
 	for {
 		conn, err := net.Dial("tcp", c.addr)
 		if err != nil {
-			log.Printf("could not connect, sleeping and trying again")
-			time.Sleep(5 * time.Second)
+			log.Printf("could not connect, sleeping for %v and trying again", reconnectionDelay)
+			time.Sleep(reconnectionDelay)
 			continue
 		}
 		c.conn = conn
