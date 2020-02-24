@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/ethulhu/mqtt-snapcast-bridge/snapcast"
 )
@@ -28,33 +29,37 @@ func main() {
 	}
 
 	snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
-	client := snapcast.Dial("tcp", snapserverAddr)
-	defer client.Close()
+	client := snapcast.NewClient(snapserverAddr)
 
-	client.SetConnectHandler(func() {
+	client.SetConnectHandler(func(client snapcast.Client) {
 		log.Print("connected")
-	})
-	client.SetErrorHandler(func(err error) {
-		log.Printf("client error: %v", err)
-	})
 
-	ctx := context.Background()
-	groups, err := client.Groups(ctx)
-	if err != nil {
-		log.Fatalf("could not get groups: %v", err)
-	}
-
-	id := ""
-	for _, group := range groups {
-		if group.Name == *groupName {
-			id = group.ID
+		ctx := context.Background()
+		groups, err := client.Groups(ctx)
+		if err != nil {
+			log.Fatalf("could not get groups: %v", err)
 		}
-	}
-	if id == "" {
-		log.Fatalf("could not find group %v", *groupName)
-	}
 
-	if err := client.SetStream(ctx, id, snapcast.Stream(*stream)); err != nil {
-		log.Fatalf("could not set stream: %v", err)
-	}
+		id := ""
+		for _, group := range groups {
+			if group.Name == *groupName {
+				id = group.ID
+			}
+		}
+		if id == "" {
+			log.Fatalf("could not find group %v", *groupName)
+		}
+
+		if err := client.SetGroupStream(ctx, id, snapcast.Stream(*stream)); err != nil {
+			log.Fatalf("could not set stream: %v", err)
+		}
+
+		os.Exit(0)
+	})
+	client.SetDisconnectHandler(func(err error) {
+		log.Printf("disconnected: %v", err)
+	})
+
+	client.Connect()
+
 }

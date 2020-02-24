@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 
@@ -13,24 +15,24 @@ var (
 )
 
 func main() {
+	flag.Parse()
 	if *host == "" || *port == 0 {
 		log.Fatal("must set -host and -port")
 	}
 	addr := fmt.Sprintf("%v:%v", *host, *port)
 
-	client := jsonrpc2.Dial("tcp", addr)
-	defer client.Close()
+	client := jsonrpc2.NewClient(addr)
 
 	client.SetConnectHandler(func() {
 		log.Print("connected")
 	})
-	client.SetErrorHandler(func(err error) {
-		log.Printf("client error: %v", err)
+	client.SetDisconnectHandler(func(err error) {
+		log.Printf("disconnected: %v", err)
 	})
 
-	client.SetNotificationHandler("Group.OnStreamChanged", func(params interface{}) {
-		fmt.Printf("%+v\n", params)
+	client.SetNotificationHandler(func(method string, payload json.RawMessage) {
+		fmt.Printf("method %q, payload %s\n", method, payload)
 	})
 
-	select {}
+	client.Connect()
 }

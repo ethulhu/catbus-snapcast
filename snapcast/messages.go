@@ -135,6 +135,49 @@ type (
 	groupSetNameResponse struct {
 		Name string `json:"name"`
 	}
+
+	clientConnectedNotification struct {
+		ID     string       `json:"id"`
+		Client clientStatus `json:"client"`
+	}
+	clientDisconnectedNotification struct {
+		ID     string       `json:"id"`
+		Client clientStatus `json:"client"`
+	}
+	clientVolumeChangedNotification struct {
+		ID     string `json:"id"`
+		Volume volume `json:"volume"`
+	}
+	clientLatencyChangedNotification struct {
+		ID      string `json:"id"`
+		Latency int    `json:"latency"`
+	}
+	clientNameChangedNotification struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+
+	groupMutedNotification struct {
+		ID   string `json:"id"`
+		Mute bool   `json:"mute"`
+	}
+	groupStreamChangedNotification struct {
+		ID     string `json:"id"`
+		Stream Stream `json:"stream_id"`
+	}
+	groupNameChangedNotification struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+
+	streamUpdatedNotification struct {
+		ID     string       `json:"id"`
+		Status streamStatus `json:"stream"`
+	}
+	serverUpdatedNotification struct {
+		ID     string       `json:"id"`
+		Status serverStatus `json:"stream"`
+	}
 )
 
 // JSON-RPC method names.
@@ -156,4 +199,15 @@ const (
 
 	streamAddStream    = "Stream.AddStream"
 	streamRemoveStream = "Stream.RemoveStream"
+
+	clientConnected      = "Client.OnConnect"
+	clientDisconnected   = "Client.OnDisconnect"
+	clientVolumeChanged  = "Client.OnVolumeChanged"
+	clientLatencyChanged = "Client.OnLatencyChanged"
+	clientNameChanged    = "Client.OnNameChanged"
+	groupMuted           = "Group.OnMute"
+	groupStreamChanged   = "Group.OnStreamChanged"
+	groupNameChanged     = "Group.OnNameChanged"
+	streamUpdated        = "Stream.OnUpdate"
+	serverUpdated        = "Server.OnUpdate"
 )

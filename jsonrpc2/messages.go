@@ -11,7 +11,7 @@ type (
 	}
 	response struct {
 		ProtocolVersion string          `json:"jsonrpc"`
-		ID              *int             `json:"id,omitempty"`
+		ID              *int            `json:"id,omitempty"`
 		Result          json.RawMessage `json:"result,omitempty"`
 		Error           *responseError  `json:"error,omitempty"`
 	}
@@ -20,8 +20,8 @@ type (
 		Message string `json:"message"`
 	}
 	notification struct {
-		ProtocolVersion string      `json:"jsonrpc"`
-		Method          string      `json:"method"`
-		Params          interface{} `json:"params,omitempty"`
+		ProtocolVersion string          `json:"jsonrpc"`
+		Method          string          `json:"method"`
+		Params          json.RawMessage `json:"params,omitempty"`
 	}
 )

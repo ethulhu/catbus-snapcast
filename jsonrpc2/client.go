@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -15,18 +16,19 @@ type (
 	client struct {
 		sync.Mutex
 
+		addr string
+
 		closed bool
 		conn   io.ReadWriteCloser
 
 		sequence int
 
-		errorChan            chan error
-		requestChan          chan *request
-		responseChans        map[int]chan *response
-		notificationHandlers map[string]NotificationHandler
+		requestChan         chan *request
+		responseChans       map[int]chan *response
+		notificationHandler func(string, json.RawMessage)
 
-		connectHandler func()
-		errorHandler   func(error)
+		connectHandler    func()
+		disconnectHandler func(error)
 	}
 )
 
@@ -38,59 +40,51 @@ const (
 //
 // It is non-blocking, as it handles connecting and re-connecting itself.
 // To close the client, explicitly call Close().
-func Dial(network, addr string) Client {
-	c := &client{
-		errorChan:            make(chan error),
-		requestChan:          make(chan *request),
-		responseChans:        map[int]chan *response{},
-		notificationHandlers: map[string]NotificationHandler{},
+func NewClient(addr string) Client {
+	return &client{
+		addr: addr,
+
+		requestChan:   make(chan *request),
+		responseChans: map[int]chan *response{},
 	}
-
-	go func() {
-		for err := range c.errorChan {
-			if c.errorHandler != nil {
-				c.errorHandler(err)
-			}
-		}
-	}()
-
-	go func() {
-		for !c.closed {
-			conn, err := net.Dial(network, addr)
-			if err != nil {
-				c.errorChan <- err
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			c.conn = conn
-
-			var wg sync.WaitGroup
-			wg.Add(2)
-
-			connectionClosed := make(chan struct{})
-			go func() {
-				c.readLoop(connectionClosed)
-				wg.Done()
-			}()
-			go func() {
-				c.writeLoop(connectionClosed)
-				wg.Done()
-			}()
-
-			if c.connectHandler != nil {
-				go c.connectHandler()
-			}
-
-			wg.Wait()
-		}
-		close(c.errorChan)
-	}()
-
-	return c
 }
 
-func (c *client) SetConnectHandler(f func())    { c.connectHandler = f }
-func (c *client) SetErrorHandler(f func(error)) { c.errorHandler = f }
+func (c *client) Connect() {
+	for !c.closed {
+		conn, err := net.Dial("tcp", c.addr)
+		if err != nil {
+			log.Printf("could not connect, sleeping and trying again")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		c.conn = conn
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		connectionClosed := make(chan struct{})
+		go func() {
+			c.readLoop(connectionClosed)
+			wg.Done()
+		}()
+		go func() {
+			c.writeLoop(connectionClosed)
+			wg.Done()
+		}()
+
+		if c.connectHandler != nil {
+			go c.connectHandler()
+		}
+
+		wg.Wait()
+	}
+}
+
+func (c *client) SetConnectHandler(f func())         { c.connectHandler = f }
+func (c *client) SetDisconnectHandler(f func(error)) { c.disconnectHandler = f }
+func (c *client) SetNotificationHandler(f func(string, json.RawMessage)) {
+	c.notificationHandler = f
+}
 
 func (c *client) Close() {
 	c.closed = true
@@ -111,10 +105,7 @@ func (c *client) readLoop(connectionClosed chan struct{}) {
 	for {
 		data, err := reader.ReadBytes('\n')
 		if err != nil {
-			// if we've been closed, we expect errors.
-			if !c.closed {
-				c.errorChan <- fmt.Errorf("could not receive response: %w", err)
-			}
+			go c.disconnectHandler(err)
 			return
 		}
 
@@ -133,15 +124,13 @@ func (c *client) readLoop(connectionClosed chan struct{}) {
 
 		noti := notification{}
 		if err := json.Unmarshal(data, &noti); err == nil && noti.Method != "" {
-			c.Lock()
-			if f, ok := c.notificationHandlers[noti.Method]; ok {
-				go f(noti.Params)
+			if c.notificationHandler != nil {
+				go c.notificationHandler(noti.Method, noti.Params)
 			}
-			c.Unlock()
 			continue
 		}
 
-		c.errorChan <- fmt.Errorf("unknown inbound message: %s", data)
+		log.Printf("unknown inbound message: %s", data)
 	}
 }
 
@@ -206,17 +195,6 @@ func (c *client) Call(ctx context.Context, method string, params interface{}, re
 	}
 
 	return nil
-}
-
-func (c *client) SetNotificationHandler(method string, f NotificationHandler) {
-	c.Lock()
-	defer c.Unlock()
-
-	if f == nil {
-		delete(c.notificationHandlers, method)
-	} else {
-		c.notificationHandlers[method] = f
-	}
 }
 
 func (c *client) newRequest() (int, <-chan *response) {

@@ -1,0 +1,4 @@
+config.json
+listen-to-jsonrpc2-events
+listen-to-snapcast-events
+mqtt-snapcast-bridge

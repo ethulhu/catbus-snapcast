@@ -27,6 +27,7 @@ package jsonrpc2
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -36,13 +37,18 @@ type (
 	Client interface {
 		// Call performs a JSON-RPC 2.0 method call.
 		Call(ctx context.Context, method string, input interface{}, output interface{}) error
-		// SetNotificationHandler sets the callback for a given JSON-RPC 2.0 notification.
-		SetNotificationHandler(method string, f NotificationHandler)
+
+		// SetNotificationHandler sets the callback JSON-RPC 2.0 notifications.
+		SetNotificationHandler(func(method string, payload json.RawMessage))
 
 		// SetConnectHandler sets the handler that will be called for each successful connection.
-		SetConnectHandler(f func())
-		// SetErrorHandler sets the handler that will be called for connection errors (not RPC errors).
-		SetErrorHandler(f func(error))
+		SetConnectHandler(func())
+
+		// SetDisconnectHandler sets the handler that will be called for each disconnection.
+		SetDisconnectHandler(func(error))
+
+		// Connect connects and blocks forever, reconnecting as needed.
+		Connect()
 
 		// Close closes the client, rendering it inert and stopping reconnect attempts.
 		Close()
