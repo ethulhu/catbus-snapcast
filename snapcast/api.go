@@ -22,17 +22,17 @@ type (
 		Streams(context.Context) ([]Stream, error)
 
 		// SetGroupStream sets a given Group's stream to the given Stream.
-		SetGroupStream(ctx context.Context, groupID string, stream Stream) error
+		SetGroupStream(ctx context.Context, groupID string, stream StreamID) error
 
 		// SetGroupStreamChangedHandler sets the handler that is called when a group's stream changes.
-		SetGroupStreamChangedHandler(func(groupID string, stream Stream))
+		SetGroupStreamChangedHandler(func(groupID string, stream StreamID))
 	}
 
 	// Group represents a group of speakers.
 	Group struct {
 		ID     string
 		Name   string
-		Stream Stream
+		Stream StreamID
 
 		Speakers []Speaker
 	}
@@ -44,8 +44,14 @@ type (
 		Volume    Volume
 	}
 
-	// Stream is a stream identifier.
-	Stream string
+	// StreamID is a stream identifier.
+	StreamID string
+
+	// Stream represents a stream.
+	Stream struct {
+		ID     StreamID
+		Status string
+	}
 
 	// Volume is a speaker's volume.
 	Volume struct {

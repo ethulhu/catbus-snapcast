@@ -63,7 +63,7 @@ func main() {
 
 		streamNames := make([]string, len(streams))
 		for i, stream := range streams {
-			streamNames[i] = string(stream)
+			streamNames[i] = string(stream.ID)
 		}
 		sort.Strings(streamNames)
 
@@ -92,7 +92,7 @@ func main() {
 	snapserver.SetDisconnectHandler(func(err error) {
 		log.Printf("disconnected from Snapserver %s: %v", snapserverAddr, err)
 	})
-	snapserver.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.Stream) {
+	snapserver.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
 		if groupID != config.SnapcastGroupID {
 			return
 		}
@@ -115,7 +115,7 @@ func setInput(snapserver snapcast.Client, groupID string) mqtt.MessageHandler {
 	return func(_ mqtt.Client, msg mqtt.Message) {
 		log.Printf("setting stream to %q", msg.Payload())
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-		if err := snapserver.SetGroupStream(ctx, groupID, snapcast.Stream(msg.Payload())); err != nil {
+		if err := snapserver.SetGroupStream(ctx, groupID, snapcast.StreamID(msg.Payload())); err != nil {
 			log.Printf("could not set stream to %q: %v", msg.Payload(), err)
 			return
 		}

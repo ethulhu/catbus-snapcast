@@ -17,7 +17,7 @@ type (
 		disconnectHandler func(error)
 		errorHandler      func(error)
 
-		groupStreamChangedHandler func(string, Stream)
+		groupStreamChangedHandler func(string, StreamID)
 	}
 )
 
@@ -64,7 +64,7 @@ func (c *client) SetConnectHandler(f func(Client)) {
 func (c *client) SetDisconnectHandler(f func(error)) {
 	c.disconnectHandler = f
 }
-func (c *client) SetGroupStreamChangedHandler(f func(string, Stream)) {
+func (c *client) SetGroupStreamChangedHandler(f func(string, StreamID)) {
 	c.groupStreamChangedHandler = f
 }
 
@@ -105,7 +105,7 @@ func (c *client) Streams(ctx context.Context) ([]Stream, error) {
 
 	var streams []Stream
 	for _, s := range rsp.Server.Streams {
-		streams = append(streams, Stream(s.ID))
+		streams = append(streams, Stream{StreamID(s.ID), s.Status})
 	}
 	return streams, nil
 }
@@ -125,7 +125,7 @@ func (c *client) SetGroupName(ctx context.Context, id, name string) error {
 	return nil
 }
 
-func (c *client) SetGroupStream(ctx context.Context, groupID string, stream Stream) error {
+func (c *client) SetGroupStream(ctx context.Context, groupID string, stream StreamID) error {
 	req := groupSetStreamRequest{
 		ID:     groupID,
 		Stream: stream,

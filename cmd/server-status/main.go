@@ -55,7 +55,8 @@ func main() {
 		}
 		fmt.Println("streams:")
 		for _, s := range streams {
-			fmt.Printf("- %s\n", s)
+			fmt.Printf("- id: %s\n", s.ID)
+			fmt.Printf("  status: %s\n", s.Status)
 		}
 
 		os.Exit(0)

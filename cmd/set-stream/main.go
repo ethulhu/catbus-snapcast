@@ -50,7 +50,7 @@ func main() {
 			log.Fatalf("could not find group %v", *groupName)
 		}
 
-		if err := client.SetGroupStream(ctx, id, snapcast.Stream(*stream)); err != nil {
+		if err := client.SetGroupStream(ctx, id, snapcast.StreamID(*stream)); err != nil {
 			log.Fatalf("could not set stream: %v", err)
 		}
 

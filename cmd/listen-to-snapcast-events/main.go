@@ -24,7 +24,7 @@ func main() {
 
 	client := snapcast.NewClient(addr)
 
-	client.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.Stream) {
+	client.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
 		log.Printf("group %v changed to stream %v", groupID, stream)
 	})
 	client.SetDisconnectHandler(func(err error) {

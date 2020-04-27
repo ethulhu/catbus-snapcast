@@ -41,7 +41,7 @@ type (
 		ID      string         `json:"id"`
 		Name    string         `json:"name"`
 		Muted   bool           `json:"muted"`
-		Stream  Stream         `json:"stream_id"`
+		Stream  StreamID         `json:"stream_id"`
 		Clients []clientStatus `json:"clients"`
 	}
 
@@ -122,10 +122,10 @@ type (
 
 	groupSetStreamRequest struct {
 		ID     string `json:"id"`
-		Stream Stream `json:"stream_id"`
+		Stream StreamID `json:"stream_id"`
 	}
 	groupSetStreamResponse struct {
-		Stream Stream `json:"stream_id"`
+		Stream StreamID `json:"stream_id"`
 	}
 
 	groupSetNameRequest struct {
@@ -163,7 +163,7 @@ type (
 	}
 	groupStreamChangedNotification struct {
 		ID     string `json:"id"`
-		Stream Stream `json:"stream_id"`
+		Stream StreamID `json:"stream_id"`
 	}
 	groupNameChangedNotification struct {
 		ID   string `json:"id"`
