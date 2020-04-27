@@ -42,6 +42,7 @@ func main() {
 			fmt.Printf("  speakers:\n")
 			for _, c := range g.Speakers {
 				fmt.Printf("  - name: %v\n", c.Name)
+				fmt.Printf("    connected: %v\n", c.Connected)
 				fmt.Printf("    muted: %v\n", c.Volume.Muted)
 				fmt.Printf("    volume: %v%%\n", c.Volume.Percent)
 			}
