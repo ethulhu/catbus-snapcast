@@ -1,4 +1,4 @@
-module github.com/ethulhu/mqtt-snapcast-bridge
+module github.com/ethulhu/catbus-snapcast
 
 go 1.13
 

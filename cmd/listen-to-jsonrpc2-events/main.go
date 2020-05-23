@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ethulhu/mqtt-snapcast-bridge/jsonrpc2"
+	"github.com/ethulhu/catbus-snapcast/jsonrpc2"
 )
 
 var (

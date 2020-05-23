@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethulhu/mqtt-snapcast-bridge/mqtt"
-	"github.com/ethulhu/mqtt-snapcast-bridge/snapcast"
+	"github.com/ethulhu/catbus-snapcast/mqtt"
+	"github.com/ethulhu/catbus-snapcast/snapcast"
 )
 
 var (
@@ -37,7 +37,7 @@ func main() {
 	brokerOptions := mqtt.NewClientOptions()
 	brokerOptions.AddBroker(brokerURI)
 	brokerOptions.SetAutoReconnect(true)
-	brokerOptions.SetClientID("mqtt-snapcast-bridge")
+	brokerOptions.SetClientID("catbus-snapcast")
 	brokerOptions.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
 		log.Printf("disconnected from MQTT broker %s: %v", brokerURI, err)
 	})

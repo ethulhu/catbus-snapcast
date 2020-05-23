@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/ethulhu/mqtt-snapcast-bridge/snapcast"
+	"github.com/ethulhu/catbus-snapcast/snapcast"
 )
 
 var (
