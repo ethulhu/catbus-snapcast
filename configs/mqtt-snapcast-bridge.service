@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Ethel Morgan
+#
+# SPDX-License-Identifier: MIT
+
 [Unit]
 Description=Control Snapserver using MQTT
 Wants=network.target

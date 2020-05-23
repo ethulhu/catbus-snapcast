@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Ethel Morgan
+//
+// SPDX-License-Identifier: MIT
+
 // Package jsonrpc2 is a minimal JSON-RPC 2.0 client.
 //
 // Message format

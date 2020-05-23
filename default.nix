@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Ethel Morgan
+#
+# SPDX-License-Identifier: MIT
+
 { pkgs ? import <nixpkgs> {} }:
 with pkgs;
 
@@ -13,4 +17,9 @@ buildGoModule rec {
   '';
 
   src = ./.;
+
+  meta = {
+    homepage = "https://ethulhu.co.uk/catbus";
+    licence = stdenv.lib.licenses.mit;
+  };
 }

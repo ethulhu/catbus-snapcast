@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Ethel Morgan
+//
+// SPDX-License-Identifier: MIT
+
 // Package snapcast is a Snapcast client.
 //
 // It follows the API as described in https://github.com/badaix/snapcast/blob/master/doc/json_rpc_api/v2_0_0.md.
