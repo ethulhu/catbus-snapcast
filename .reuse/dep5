@@ -1,0 +1,10 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Catbus Snapcast
+Upstream-Contact: Ethel Morgan <eth@ethulhu.co.uk>
+Source: https://ethulhu.co.uk/catbus
+
+# go.sum files are arguably build artifacts, and thus uncopyrightable.
+# TODO: remove this if ignoring go.sum files is upstreamed.
+Copyright: build artifact, uncopyrightable
+Files: go.sum
+License: CC0-1.0
