@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -20,13 +21,17 @@ import (
 
 var (
 	configPath = flag.String("config-path", "", "path to config.json")
+
+	mqttClientID = flag.String("mqtt-client-id", "catbus-bridge-snapcast", "the client ID passed to the MQTT broker")
 )
 
 func main() {
 	flag.Parse()
 
 	if *configPath == "" {
-		log.Fatal("must set --config-path")
+		fmt.Fprintln(os.Stderr, "must set --config-path")
+		flag.Usage()
+		os.Exit(2)
 	}
 
 	config, err := loadConfig(*configPath)
@@ -41,7 +46,7 @@ func main() {
 	brokerOptions := mqtt.NewClientOptions()
 	brokerOptions.AddBroker(brokerURI)
 	brokerOptions.SetAutoReconnect(true)
-	brokerOptions.SetClientID("catbus-snapcast")
+	brokerOptions.SetClientID(*mqttClientID)
 	brokerOptions.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
 		log.Printf("disconnected from MQTT broker %s: %v", brokerURI, err)
 	})
