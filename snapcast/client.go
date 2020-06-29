@@ -43,7 +43,7 @@ func Discover() (Client, error) {
 		return nil, fmt.Errorf("found no %s services", mdnsService)
 	}
 
-	addr := fmt.Sprintf("%v:%v", serviceEntry.Host, serviceEntry.Port)
+	addr := fmt.Sprintf("%v:%v", serviceEntry.AddrV4, serviceEntry.Port)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return nil, err
