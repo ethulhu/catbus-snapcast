@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethulhu/catbus-snapcast/mqtt"
 	"github.com/ethulhu/catbus-snapcast/snapcast"
+	"go.eth.moe/catbus"
 )
 
 var (
@@ -59,23 +59,20 @@ func main() {
 		}
 	}
 
-	brokerURI := mqtt.URI(config.BrokerHost, config.BrokerPort)
-	brokerOptions := mqtt.NewClientOptions()
-	brokerOptions.AddBroker(brokerURI)
-	brokerOptions.SetAutoReconnect(true)
-	brokerOptions.SetClientID(*mqttClientID)
-	brokerOptions.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
-		log.Printf("disconnected from MQTT broker %s: %v", brokerURI, err)
-	})
-	brokerOptions.SetOnConnectHandler(func(broker mqtt.Client) {
-		log.Printf("connected to MQTT broker %s", brokerURI)
+	brokerURI := fmt.Sprintf("tcp://%v:%v", config.BrokerHost, config.BrokerPort)
+	catbusOptions := catbus.ClientOptions{
+		DisconnectHandler: func(_ catbus.Client, err error) {
+			log.Printf("disconnected from MQTT broker %s: %v", brokerURI, err)
+		},
+		ConnectHandler: func(broker catbus.Client) {
+			log.Printf("connected to MQTT broker %s", brokerURI)
 
-		token := broker.Subscribe(config.TopicInput, mqtt.AtLeastOnce, setInput(snapserver, config.SnapcastGroupID))
-		if err := token.Error(); err != nil {
-			log.Printf("could not subscribe to %v: %v", config.TopicInput, err)
-		}
-	})
-	broker := mqtt.NewClient(brokerOptions)
+			if err := broker.Subscribe(config.TopicInput, setInput(snapserver, config.SnapcastGroupID)); err != nil {
+				log.Printf("could not subscribe to %v: %v", config.TopicInput, err)
+			}
+		},
+	}
+	broker := catbus.NewClient(brokerURI, catbusOptions)
 
 	snapserver.SetConnectHandler(func(snapserver snapcast.Client) {
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -86,7 +83,7 @@ func main() {
 			log.Printf("could not get Snapserver host: %v", err)
 			return
 		}
-		log.Printf("connected to Snapserver %q", host)
+		log.Printf("connected to Snapserver: %v", host)
 
 		streams, err := snapserver.Streams(ctx)
 		if err != nil {
@@ -101,8 +98,7 @@ func main() {
 		sort.Strings(streamNames)
 
 		topicValues := path.Join(config.TopicInput, "values")
-		token := broker.Publish(topicValues, mqtt.AtLeastOnce, mqtt.Retain, strings.Join(streamNames, "\n"))
-		if err := token.Error(); err != nil {
+		if err := broker.Publish(topicValues, catbus.Retain, strings.Join(streamNames, "\n")); err != nil {
 			log.Printf("could not publish stream values: %v", err)
 		}
 
@@ -116,8 +112,7 @@ func main() {
 				return
 			}
 			log.Printf("publishing stream value %q", group.Stream)
-			token := broker.Publish(config.TopicInput, mqtt.AtLeastOnce, mqtt.Retain, string(group.Stream))
-			if err := token.Error(); err != nil {
+			if err := broker.Publish(config.TopicInput, catbus.Retain, string(group.Stream)); err != nil {
 				log.Printf("could not publish stream value %q: %v", group.Stream, err)
 			}
 		}
@@ -131,25 +126,28 @@ func main() {
 		}
 
 		log.Printf("publishing stream value %q", stream)
-		token := broker.Publish(config.TopicInput, mqtt.AtLeastOnce, mqtt.Retain, string(stream))
-		if err := token.Error(); err != nil {
+		if err := broker.Publish(config.TopicInput, catbus.Retain, string(stream)); err != nil {
 			log.Printf("could not publish stream value %q: %v", stream, err)
 		}
 	})
 
-	log.Printf("connecting to MQTT broker %v", brokerURI)
-	_ = broker.Connect()
+	go func() {
+		log.Printf("connecting to Snapserver")
+		snapserver.Connect()
+	}()
 
-	log.Printf("connecting to Snapserver")
-	snapserver.Connect()
+	log.Printf("connecting to MQTT broker %v", brokerURI)
+	if err := broker.Connect(); err != nil {
+		log.Fatalf("could not connect to Catbus: %v", err)
+	}
 }
 
-func setInput(snapserver snapcast.Client, groupID string) mqtt.MessageHandler {
-	return func(_ mqtt.Client, msg mqtt.Message) {
-		log.Printf("setting stream to %q", msg.Payload())
+func setInput(snapserver snapcast.Client, groupID string) catbus.MessageHandler {
+	return func(_ catbus.Client, msg catbus.Message) {
+		log.Printf("setting stream to %q", msg.Payload)
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-		if err := snapserver.SetGroupStream(ctx, groupID, snapcast.StreamID(msg.Payload())); err != nil {
-			log.Printf("could not set stream to %q: %v", msg.Payload(), err)
+		if err := snapserver.SetGroupStream(ctx, groupID, snapcast.StreamID(msg.Payload)); err != nil {
+			log.Printf("could not set stream to %q: %v", msg.Payload, err)
 			return
 		}
 	}
