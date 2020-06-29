@@ -9,7 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
+	"net"
 
 	"go.eth.moe/catbus-snapcast/snapcast"
 )
@@ -31,9 +31,14 @@ func main() {
 
 	var client snapcast.Client
 	if *snapserverHost != "" {
-		snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+		addr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+		conn, err := net.Dial("tcp", addr)
+		if err != nil {
+			log.Fatalf("could not dial %v: %v", addr, err)
+		}
+		defer conn.Close()
 
-		client = snapcast.NewClient(snapserverAddr)
+		client = snapcast.NewClient(conn)
 	} else {
 		var err error
 		client, err = snapcast.Discover()
@@ -41,36 +46,25 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	log.Print("connected")
 
-	client.SetConnectHandler(func(client snapcast.Client) {
-		log.Print("connected")
+	ctx := context.Background()
+	groups, err := client.Groups(ctx)
+	if err != nil {
+		log.Fatalf("could not get groups: %v", err)
+	}
 
-		ctx := context.Background()
-		groups, err := client.Groups(ctx)
-		if err != nil {
-			log.Fatalf("could not get groups: %v", err)
+	id := ""
+	for _, group := range groups {
+		if group.Name == *groupName {
+			id = group.ID
 		}
+	}
+	if id == "" {
+		log.Fatalf("could not find group %v", *groupName)
+	}
 
-		id := ""
-		for _, group := range groups {
-			if group.Name == *groupName {
-				id = group.ID
-			}
-		}
-		if id == "" {
-			log.Fatalf("could not find group %v", *groupName)
-		}
-
-		if err := client.SetGroupStream(ctx, id, snapcast.StreamID(*stream)); err != nil {
-			log.Fatalf("could not set stream: %v", err)
-		}
-
-		os.Exit(0)
-	})
-	client.SetDisconnectHandler(func(err error) {
-		log.Printf("disconnected: %v", err)
-	})
-
-	client.Connect()
-
+	if err := client.SetGroupStream(ctx, id, snapcast.StreamID(*stream)); err != nil {
+		log.Fatalf("could not set stream: %v", err)
+	}
 }

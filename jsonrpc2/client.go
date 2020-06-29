@@ -13,89 +13,60 @@ import (
 	"log"
 	"net"
 	"sync"
-	"time"
 )
 
 type (
 	client struct {
 		sync.Mutex
 
-		addr string
-
-		connected bool
-		conn      io.ReadWriteCloser
+		conn io.ReadWriteCloser
 
 		sequence int
 
+		errorChan           chan error
 		requestChan         chan *request
 		responseChans       map[int]chan *response
 		notificationHandler func(string, json.RawMessage)
 
-		connectHandler    func()
 		disconnectHandler func(error)
 	}
 )
 
 const (
 	protocolVersion = "2.0"
-
-	reconnectionDelay = 5 * time.Second
 )
 
-// Dial returns a new JSON-RPC 2.0 client.
-//
-// It is non-blocking, as it handles connecting and re-connecting itself.
-// To close the client, explicitly call Close().
-func NewClient(addr string) Client {
-	return &client{
-		addr: addr,
+// NewClient returns a new JSON-RPC 2.0 client.
+func NewClient(conn net.Conn) Client {
+	c := &client{
+		conn: conn,
 
+		errorChan:     make(chan error),
 		requestChan:   make(chan *request),
 		responseChans: map[int]chan *response{},
 	}
+
+	connectionClosed := make(chan struct{})
+	go c.readLoop(connectionClosed)
+	go c.writeLoop(connectionClosed)
+
+	return c
 }
 
-func (c *client) SetConnectHandler(f func())         { c.connectHandler = f }
-func (c *client) SetDisconnectHandler(f func(error)) { c.disconnectHandler = f }
+func (c *client) Close() error {
+	return c.conn.Close()
+}
+func (c *client) Wait() error {
+	return <-c.errorChan
+}
+
 func (c *client) SetNotificationHandler(f func(string, json.RawMessage)) {
 	c.notificationHandler = f
 }
 
-func (c *client) Connect() {
-	c.connected = true
-
-	for {
-		conn, err := net.Dial("tcp", c.addr)
-		if err != nil {
-			log.Printf("could not connect, sleeping for %v and trying again", reconnectionDelay)
-			time.Sleep(reconnectionDelay)
-			continue
-		}
-		c.conn = conn
-
-		var wg sync.WaitGroup
-		wg.Add(2)
-
-		connectionClosed := make(chan struct{})
-		go func() {
-			c.readLoop(connectionClosed)
-			wg.Done()
-		}()
-		go func() {
-			c.writeLoop(connectionClosed)
-			wg.Done()
-		}()
-
-		if c.connectHandler != nil {
-			go c.connectHandler()
-		}
-
-		wg.Wait()
-	}
-}
-
 func (c *client) readLoop(connectionClosed chan struct{}) {
 	defer close(connectionClosed)
+	defer close(c.errorChan)
 	defer func() {
 		c.Lock()
 		defer c.Unlock()
@@ -109,7 +80,11 @@ func (c *client) readLoop(connectionClosed chan struct{}) {
 	for {
 		data, err := reader.ReadBytes('\n')
 		if err != nil {
-			go c.disconnectHandler(err)
+			// Non-blocking send.
+			select {
+			case c.errorChan <- err:
+			default:
+			}
 			return
 		}
 
@@ -159,10 +134,6 @@ func (c *client) writeLoop(connectionClosed chan struct{}) {
 }
 
 func (c *client) Call(ctx context.Context, method string, params interface{}, result interface{}) error {
-	if !c.connected {
-		panic("called jsonrpc2.Client.Call before jsonrpc2.Client.Connect")
-	}
-
 	id, ch := c.newRequest()
 
 	req := &request{
@@ -180,7 +151,7 @@ func (c *client) Call(ctx context.Context, method string, params interface{}, re
 			return ErrDisconnected
 		}
 		if rsp.Error != nil {
-			return &RemoteError{
+			return RemoteError{
 				Code:    rsp.Error.Code,
 				Message: rsp.Error.Message,
 			}

@@ -12,14 +12,6 @@ import "context"
 type (
 	// Client is a Snapcast Snapserver RPC client.
 	Client interface {
-		// Connect connects to the Snapserver and blocks forever, reconnecting as needed.
-		Connect()
-
-		// SetConnectHandler sets the handler that will be called for each successful connection.
-		SetConnectHandler(func(Client))
-		// SetDisconnectHandler sets the handler that will be called after each disconnection.
-		SetDisconnectHandler(func(error))
-
 		// Host returns either the IP or hostname of the Snapserver.
 		Host(context.Context) (string, error)
 
@@ -34,6 +26,12 @@ type (
 
 		// SetGroupStreamChangedHandler sets the handler that is called when a group's stream changes.
 		SetGroupStreamChangedHandler(func(groupID string, stream StreamID))
+
+		// Wait blocks until the connection fails.
+		Wait() error
+
+		// Close closes the connection.
+		Close() error
 	}
 
 	// Group represents a group of speakers.

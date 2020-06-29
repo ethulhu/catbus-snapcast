@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 
 	"go.eth.moe/catbus-snapcast/snapcast"
 )
@@ -22,9 +23,14 @@ func main() {
 
 	var client snapcast.Client
 	if *snapserverHost != "" {
-		snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+		addr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+		conn, err := net.Dial("tcp", addr)
+		if err != nil {
+			log.Fatalf("could not dial %v: %v", addr, err)
+		}
+		defer conn.Close()
 
-		client = snapcast.NewClient(snapserverAddr)
+		client = snapcast.NewClient(conn)
 	} else {
 		var err error
 		client, err = snapcast.Discover()
@@ -36,12 +42,8 @@ func main() {
 	client.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
 		log.Printf("group %v changed to stream %v", groupID, stream)
 	})
-	client.SetDisconnectHandler(func(err error) {
-		log.Printf("disconnected: %v", err)
-	})
-	client.SetConnectHandler(func(client snapcast.Client) {
-		log.Print("connected!")
-	})
 
-	client.Connect()
+	if err := client.Wait(); err != nil {
+		log.Fatalf("disconnected from Snapserver: %v", err)
+	}
 }

@@ -21,8 +21,6 @@ var (
 	configPath = flag.Custom("config-path", "", "path to config.json", flag.RequiredString)
 )
 
-var host string
-
 func main() {
 	flag.Parse()
 
@@ -31,11 +29,6 @@ func main() {
 	config, err := config.ParseFile(configPath)
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
-	}
-
-	snapserver, err := snapcast.Discover()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	catbusOptions := catbus.ClientOptions{
@@ -48,11 +41,22 @@ func main() {
 	}
 	broker := catbus.NewClient(config.BrokerURI, catbusOptions)
 
-	snapserver.SetConnectHandler(func(snapserver snapcast.Client) {
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	go func() {
+		log.Printf("connecting to MQTT broker %v", config.BrokerURI)
+		if err := broker.Connect(); err != nil {
+			log.Fatalf("could not connect to Catbus: %v", err)
+		}
+	}()
 
-		var err error
-		host, err = snapserver.Host(ctx)
+	for {
+		snapserver, err := snapcast.Discover()
+		if err != nil {
+			log.Printf("could not discover Snapserver: %v", err)
+			continue
+		}
+
+		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		host, err := snapserver.Host(ctx)
 		if err != nil {
 			log.Printf("could not get Snapserver host: %v", err)
 			return
@@ -64,13 +68,11 @@ func main() {
 			log.Printf("could not list Snapserver streams: %v", err)
 			return
 		}
-
 		streamNames := make([]string, len(streams))
 		for i, stream := range streams {
 			streamNames[i] = string(stream.ID)
 		}
 		sort.Strings(streamNames)
-
 		if err := broker.Publish(config.Topics.InputValues, catbus.Retain, strings.Join(streamNames, "\n")); err != nil {
 			log.Printf("could not publish stream values: %v", err)
 		}
@@ -78,40 +80,31 @@ func main() {
 		groups, err := snapserver.Groups(ctx)
 		if err != nil {
 			log.Printf("could not get current Snapserver groups: %v", err)
-			return
+			continue
 		}
 		group, ok := groups[config.Snapcast.GroupID]
 		if !ok {
-			return
+			continue
 		}
-
 		if err := broker.Publish(config.Topics.Input, catbus.Retain, string(group.Stream)); err != nil {
 			log.Printf("could not publish stream value %q: %v", group.Stream, err)
-			return
+			continue
 		}
 		log.Printf("published stream value %q", group.Stream)
-	})
-	snapserver.SetDisconnectHandler(func(err error) {
-		log.Printf("disconnected from Snapserver %q: %v", host, err)
-	})
-	snapserver.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
-		if groupID != config.Snapcast.GroupID {
-			return
+
+		snapserver.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
+			if groupID != config.Snapcast.GroupID {
+				return
+			}
+
+			log.Printf("publishing stream value %q", stream)
+			if err := broker.Publish(config.Topics.Input, catbus.Retain, string(stream)); err != nil {
+				log.Printf("could not publish stream value %q: %v", stream, err)
+			}
+		})
+
+		if err := snapserver.Wait(); err != nil {
+			log.Printf("disconnected from Snapserver: %v", err)
 		}
-
-		log.Printf("publishing stream value %q", stream)
-		if err := broker.Publish(config.Topics.Input, catbus.Retain, string(stream)); err != nil {
-			log.Printf("could not publish stream value %q: %v", stream, err)
-		}
-	})
-
-	go func() {
-		log.Printf("connecting to Snapserver")
-		snapserver.Connect()
-	}()
-
-	log.Printf("connecting to MQTT broker %v", config.BrokerURI)
-	if err := broker.Connect(); err != nil {
-		log.Fatalf("could not connect to Catbus: %v", err)
 	}
 }

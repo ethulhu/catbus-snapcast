@@ -39,19 +39,16 @@ import (
 type (
 	// Client is a JSON-RPC 2.0 client.
 	Client interface {
-		// Connect connects and blocks forever, reconnecting as needed.
-		Connect()
-
-		// SetConnectHandler sets the handler that will be called for each successful connection.
-		SetConnectHandler(func())
-		// SetDisconnectHandler sets the handler that will be called for each disconnection.
-		SetDisconnectHandler(func(error))
-
 		// Call performs a JSON-RPC 2.0 method call.
 		Call(ctx context.Context, method string, input interface{}, output interface{}) error
 
 		// SetNotificationHandler sets the callback for JSON-RPC 2.0 notifications.
 		SetNotificationHandler(func(method string, payload json.RawMessage))
+		// Wait blocks until the connection fails.
+		Wait() error
+
+		// Close closes the connection.
+		Close() error
 	}
 
 	// RemoteError is an error returned by the server in response to an RPC.
@@ -66,6 +63,6 @@ var (
 	ErrDisconnected = errors.New("disconnected while waiting for response")
 )
 
-func (e *RemoteError) Error() string {
+func (e RemoteError) Error() string {
 	return fmt.Sprintf("remote error: %s (code %d)", e.Message, e.Code)
 }

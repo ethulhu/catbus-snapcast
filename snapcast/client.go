@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 
 	"github.com/hashicorp/mdns"
 	"go.eth.moe/catbus-snapcast/jsonrpc2"
@@ -16,11 +17,7 @@ import (
 
 type (
 	client struct {
-		jsonrpcClient jsonrpc2.Client
-
-		connectHandler    func(Client)
-		disconnectHandler func(error)
-		errorHandler      func(error)
+		jsonrpc2.Client
 
 		groupStreamChangedHandler func(string, StreamID)
 	}
@@ -47,26 +44,20 @@ func Discover() (Client, error) {
 	}
 
 	addr := fmt.Sprintf("%v:%v", serviceEntry.Host, serviceEntry.Port)
-	return NewClient(addr), nil
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return NewClient(conn), nil
 }
 
 // NewClient returns a Snapcast Snapserver client.
-func NewClient(addr string) Client {
+func NewClient(conn net.Conn) Client {
 	c := &client{
-		jsonrpcClient: jsonrpc2.NewClient(addr),
+		Client: jsonrpc2.NewClient(conn),
 	}
 
-	c.jsonrpcClient.SetConnectHandler(func() {
-		if c.connectHandler != nil {
-			c.connectHandler(c)
-		}
-	})
-	c.jsonrpcClient.SetDisconnectHandler(func(err error) {
-		if c.disconnectHandler != nil {
-			c.disconnectHandler(err)
-		}
-	})
-	c.jsonrpcClient.SetNotificationHandler(func(method string, payload json.RawMessage) {
+	c.SetNotificationHandler(func(method string, payload json.RawMessage) {
 		switch method {
 		case groupStreamChanged:
 			if c.groupStreamChangedHandler != nil {
@@ -83,23 +74,13 @@ func NewClient(addr string) Client {
 	return c
 }
 
-func (c *client) Connect() {
-	c.jsonrpcClient.Connect()
-}
-
-func (c *client) SetConnectHandler(f func(Client)) {
-	c.connectHandler = f
-}
-func (c *client) SetDisconnectHandler(f func(error)) {
-	c.disconnectHandler = f
-}
 func (c *client) SetGroupStreamChangedHandler(f func(string, StreamID)) {
 	c.groupStreamChangedHandler = f
 }
 
 func (c *client) Host(ctx context.Context) (string, error) {
 	rsp := serverGetStatusResponse{}
-	if err := c.jsonrpcClient.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
+	if err := c.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
 		return "", fmt.Errorf("could not get server status: %w", err)
 	}
 
@@ -113,7 +94,7 @@ func (c *client) Host(ctx context.Context) (string, error) {
 
 func (c *client) Groups(ctx context.Context) (map[string]Group, error) {
 	rsp := serverGetStatusResponse{}
-	if err := c.jsonrpcClient.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
+	if err := c.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
 		return nil, fmt.Errorf("could not get server status: %w", err)
 	}
 
@@ -142,7 +123,7 @@ func (c *client) Groups(ctx context.Context) (map[string]Group, error) {
 
 func (c *client) Streams(ctx context.Context) ([]Stream, error) {
 	rsp := serverGetStatusResponse{}
-	if err := c.jsonrpcClient.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
+	if err := c.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
 		return nil, fmt.Errorf("could not get server status: %w", err)
 	}
 
@@ -159,7 +140,7 @@ func (c *client) SetGroupName(ctx context.Context, id, name string) error {
 		Name: name,
 	}
 	rsp := groupSetNameResponse{}
-	if err := c.jsonrpcClient.Call(ctx, groupSetName, req, &rsp); err != nil {
+	if err := c.Call(ctx, groupSetName, req, &rsp); err != nil {
 		return fmt.Errorf("could not set group name: %w", err)
 	}
 	if rsp.Name != name {
@@ -174,7 +155,7 @@ func (c *client) SetGroupStream(ctx context.Context, groupID string, stream Stre
 		Stream: stream,
 	}
 	rsp := groupSetStreamResponse{}
-	if err := c.jsonrpcClient.Call(ctx, groupSetStream, req, &rsp); err != nil {
+	if err := c.Call(ctx, groupSetStream, req, &rsp); err != nil {
 		return fmt.Errorf("could not set stream: %w", err)
 	}
 	if rsp.Stream != stream {

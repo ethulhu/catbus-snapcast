@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 
 	"go.eth.moe/catbus-snapcast/jsonrpc2"
 )
@@ -23,20 +24,23 @@ func main() {
 	if *host == "" || *port == 0 {
 		log.Fatal("must set -host and -port")
 	}
+
 	addr := fmt.Sprintf("%v:%v", *host, *port)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		log.Fatalf("could not dial %v: %v", addr, err)
+	}
+	defer conn.Close()
 
-	client := jsonrpc2.NewClient(addr)
+	log.Print("connected")
 
-	client.SetConnectHandler(func() {
-		log.Print("connected")
-	})
-	client.SetDisconnectHandler(func(err error) {
-		log.Printf("disconnected: %v", err)
-	})
+	client := jsonrpc2.NewClient(conn)
 
 	client.SetNotificationHandler(func(method string, payload json.RawMessage) {
 		fmt.Printf("method %q, payload %s\n", method, payload)
 	})
 
-	client.Connect()
+	if err := client.Wait(); err != nil {
+		log.Fatalf("disconnected from %q: %v", addr, err)
+	}
 }
