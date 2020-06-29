@@ -10,7 +10,7 @@ buildGoModule rec {
   version = "latest";
   goPackagePath = "github.com/ethulhu/catbus-snapcast";
 
-  modSha256 = "06ihmp5ykmr9gnq75m9l3lmgx1rhfsj2xasvdd1g3shm68r5975c";
+  modSha256 = "09jafsc871raczzd5gjjybrcc93w7fnsm5w0spqjjnkhhpgbiw2a";
 
   preBuild = ''
     go generate ./...

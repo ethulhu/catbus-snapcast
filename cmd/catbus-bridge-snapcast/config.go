@@ -12,15 +12,13 @@ import (
 
 type (
 	Config struct {
-		BrokerHost string `json:"broker_host"`
-		BrokerPort uint   `json:"broker_port"`
+		MQTTBroker string `json:"mqttBroker"`
 
-		SnapserverHost string `json:"snapserver_host"`
-		SnapserverPort uint   `json:"snapserver_port"`
+		Topics struct {
+			Input string `json:"input"`
+		} `json:"topics"`
 
-		TopicInput string `json:"topic_input"`
-
-		SnapcastGroupID string `json:"snapcast_group_id"`
+		SnapcastGroupID string `json:"snapcastGroupId"`
 	}
 )
 

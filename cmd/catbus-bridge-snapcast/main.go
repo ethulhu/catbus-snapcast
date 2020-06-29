@@ -6,23 +6,19 @@ package main
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"log"
-	"os"
-	"path"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/ethulhu/catbus-snapcast/config"
 	"github.com/ethulhu/catbus-snapcast/snapcast"
 	"go.eth.moe/catbus"
+	"go.eth.moe/flag"
 )
 
 var (
-	configPath = flag.String("config-path", "", "path to config.json")
-
-	mqttClientID = flag.String("mqtt-client-id", "catbus-bridge-snapcast", "the client ID passed to the MQTT broker")
+	configPath = flag.Custom("config-path", "", "path to config.json", flag.RequiredString)
 )
 
 var host string
@@ -30,49 +26,31 @@ var host string
 func main() {
 	flag.Parse()
 
-	if *configPath == "" {
-		fmt.Fprintln(os.Stderr, "must set --config-path")
-		flag.Usage()
-		os.Exit(2)
-	}
+	configPath := (*configPath).(string)
 
-	config, err := loadConfig(*configPath)
+	config, err := config.ParseFile(configPath)
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	var snapserver snapcast.Client
-	if config.SnapserverHost != "" {
-		snapserverPort := config.SnapserverPort
-		if snapserverPort == 0 {
-			snapserverPort = snapcast.DefaultPort
-		}
-
-		snapserverAddr := fmt.Sprintf("%v:%v", config.SnapserverHost, snapserverPort)
-
-		snapserver = snapcast.NewClient(snapserverAddr)
-	} else {
-		var err error
-		snapserver, err = snapcast.Discover()
-		if err != nil {
-			log.Fatal(err)
-		}
+	snapserver, err := snapcast.Discover()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	brokerURI := fmt.Sprintf("tcp://%v:%v", config.BrokerHost, config.BrokerPort)
 	catbusOptions := catbus.ClientOptions{
 		DisconnectHandler: func(_ catbus.Client, err error) {
-			log.Printf("disconnected from MQTT broker %s: %v", brokerURI, err)
+			log.Printf("disconnected from MQTT broker %s: %v", config.BrokerURI, err)
 		},
 		ConnectHandler: func(broker catbus.Client) {
-			log.Printf("connected to MQTT broker %s", brokerURI)
+			log.Printf("connected to MQTT broker %s", config.BrokerURI)
 
-			if err := broker.Subscribe(config.TopicInput, setInput(snapserver, config.SnapcastGroupID)); err != nil {
-				log.Printf("could not subscribe to %v: %v", config.TopicInput, err)
+			if err := broker.Subscribe(config.Topics.Input, setInput(snapserver, config.Snapcast.GroupID)); err != nil {
+				log.Printf("could not subscribe to %v: %v", config.Topics.Input, err)
 			}
 		},
 	}
-	broker := catbus.NewClient(brokerURI, catbusOptions)
+	broker := catbus.NewClient(config.BrokerURI, catbusOptions)
 
 	snapserver.SetConnectHandler(func(snapserver snapcast.Client) {
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -97,8 +75,7 @@ func main() {
 		}
 		sort.Strings(streamNames)
 
-		topicValues := path.Join(config.TopicInput, "values")
-		if err := broker.Publish(topicValues, catbus.Retain, strings.Join(streamNames, "\n")); err != nil {
+		if err := broker.Publish(config.Topics.InputValues, catbus.Retain, strings.Join(streamNames, "\n")); err != nil {
 			log.Printf("could not publish stream values: %v", err)
 		}
 
@@ -108,11 +85,11 @@ func main() {
 			return
 		}
 		for _, group := range groups {
-			if group.ID != config.SnapcastGroupID {
+			if group.ID != config.Snapcast.GroupID {
 				return
 			}
 			log.Printf("publishing stream value %q", group.Stream)
-			if err := broker.Publish(config.TopicInput, catbus.Retain, string(group.Stream)); err != nil {
+			if err := broker.Publish(config.Topics.Input, catbus.Retain, string(group.Stream)); err != nil {
 				log.Printf("could not publish stream value %q: %v", group.Stream, err)
 			}
 		}
@@ -121,12 +98,12 @@ func main() {
 		log.Printf("disconnected from Snapserver %q: %v", host, err)
 	})
 	snapserver.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
-		if groupID != config.SnapcastGroupID {
+		if groupID != config.Snapcast.GroupID {
 			return
 		}
 
 		log.Printf("publishing stream value %q", stream)
-		if err := broker.Publish(config.TopicInput, catbus.Retain, string(stream)); err != nil {
+		if err := broker.Publish(config.Topics.Input, catbus.Retain, string(stream)); err != nil {
 			log.Printf("could not publish stream value %q: %v", stream, err)
 		}
 	})
@@ -136,7 +113,7 @@ func main() {
 		snapserver.Connect()
 	}()
 
-	log.Printf("connecting to MQTT broker %v", brokerURI)
+	log.Printf("connecting to MQTT broker %v", config.BrokerURI)
 	if err := broker.Connect(); err != nil {
 		log.Fatalf("could not connect to Catbus: %v", err)
 	}
