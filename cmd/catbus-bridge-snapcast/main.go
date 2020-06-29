@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"go.eth.moe/catbus"
 	"go.eth.moe/catbus-snapcast/config"
 	"go.eth.moe/catbus-snapcast/snapcast"
-	"go.eth.moe/catbus"
 	"go.eth.moe/flag"
 )
 
@@ -84,15 +84,16 @@ func main() {
 			log.Printf("could not get current Snapserver groups: %v", err)
 			return
 		}
-		for _, group := range groups {
-			if group.ID != config.Snapcast.GroupID {
-				return
-			}
-			log.Printf("publishing stream value %q", group.Stream)
-			if err := broker.Publish(config.Topics.Input, catbus.Retain, string(group.Stream)); err != nil {
-				log.Printf("could not publish stream value %q: %v", group.Stream, err)
-			}
+		group, ok := groups[config.Snapcast.GroupID]
+		if !ok {
+			return
 		}
+
+		if err := broker.Publish(config.Topics.Input, catbus.Retain, string(group.Stream)); err != nil {
+			log.Printf("could not publish stream value %q: %v", group.Stream, err)
+			return
+		}
+		log.Printf("published stream value %q", group.Stream)
 	})
 	snapserver.SetDisconnectHandler(func(err error) {
 		log.Printf("disconnected from Snapserver %q: %v", host, err)

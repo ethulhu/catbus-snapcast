@@ -23,8 +23,8 @@ type (
 		// Host returns either the IP or hostname of the Snapserver.
 		Host(context.Context) (string, error)
 
-		// Groups returns the list of groups managed by the Snapserver.
-		Groups(context.Context) ([]Group, error)
+		// Groups returns a map of groups by group ID managed by the Snapserver.
+		Groups(context.Context) (map[string]Group, error)
 
 		// Streams returns the list of streams managed by the Snapserver.
 		Streams(context.Context) ([]Stream, error)

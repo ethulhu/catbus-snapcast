@@ -111,13 +111,13 @@ func (c *client) Host(ctx context.Context) (string, error) {
 	return name, nil
 }
 
-func (c *client) Groups(ctx context.Context) ([]Group, error) {
+func (c *client) Groups(ctx context.Context) (map[string]Group, error) {
 	rsp := serverGetStatusResponse{}
 	if err := c.jsonrpcClient.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
 		return nil, fmt.Errorf("could not get server status: %w", err)
 	}
 
-	var groups []Group
+	groups := map[string]Group{}
 	for _, g := range rsp.Server.Groups {
 		var clients []Speaker
 		for _, c := range g.Clients {
@@ -130,12 +130,12 @@ func (c *client) Groups(ctx context.Context) ([]Group, error) {
 				},
 			})
 		}
-		groups = append(groups, Group{
+		groups[g.ID] = Group{
 			ID:       g.ID,
 			Name:     g.Name,
 			Stream:   g.Stream,
 			Speakers: clients,
-		})
+		}
 	}
 	return groups, nil
 }
