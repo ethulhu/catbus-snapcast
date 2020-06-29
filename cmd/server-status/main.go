@@ -11,7 +11,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/ethulhu/catbus-snapcast/snapcast"
+	"go.eth.moe/catbus-snapcast/snapcast"
 )
 
 var (

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-module github.com/ethulhu/catbus-snapcast
+module go.eth.moe/catbus-snapcast
 
 go 1.13
 

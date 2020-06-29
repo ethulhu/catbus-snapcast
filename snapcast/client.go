@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ethulhu/catbus-snapcast/jsonrpc2"
 	"github.com/hashicorp/mdns"
+	"go.eth.moe/catbus-snapcast/jsonrpc2"
 )
 
 type (

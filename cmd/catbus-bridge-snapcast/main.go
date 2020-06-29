@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethulhu/catbus-snapcast/config"
-	"github.com/ethulhu/catbus-snapcast/snapcast"
+	"go.eth.moe/catbus-snapcast/config"
+	"go.eth.moe/catbus-snapcast/snapcast"
 	"go.eth.moe/catbus"
 	"go.eth.moe/flag"
 )

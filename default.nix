@@ -8,7 +8,7 @@ with pkgs;
 buildGoModule rec {
   name = "catbus-snapcast-${version}";
   version = "latest";
-  goPackagePath = "github.com/ethulhu/catbus-snapcast";
+  goPackagePath = "go.eth.moe/catbus-snapcast";
 
   modSha256 = "09jafsc871raczzd5gjjybrcc93w7fnsm5w0spqjjnkhhpgbiw2a";
 

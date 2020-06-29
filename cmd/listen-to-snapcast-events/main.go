@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ethulhu/catbus-snapcast/snapcast"
+	"go.eth.moe/catbus-snapcast/snapcast"
 )
 
 var (
