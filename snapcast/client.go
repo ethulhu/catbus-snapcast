@@ -11,6 +11,7 @@ import (
 	"log"
 
 	"github.com/ethulhu/catbus-snapcast/jsonrpc2"
+	"github.com/hashicorp/mdns"
 )
 
 type (
@@ -24,6 +25,30 @@ type (
 		groupStreamChangedHandler func(string, StreamID)
 	}
 )
+
+const (
+	mdnsService = "_snapcast-jsonrpc._tcp"
+)
+
+func Discover() (Client, error) {
+	ch := make(chan *mdns.ServiceEntry)
+	defer close(ch)
+
+	var serviceEntry *mdns.ServiceEntry
+	go func() {
+		serviceEntry = <-ch
+	}()
+
+	if err := mdns.Lookup(mdnsService, ch); err != nil {
+		return nil, fmt.Errorf("could not discover via mDNS: %w", err)
+	}
+	if serviceEntry == nil {
+		return nil, fmt.Errorf("found no %s services", mdnsService)
+	}
+
+	addr := fmt.Sprintf("%v:%v", serviceEntry.Host, serviceEntry.Port)
+	return NewClient(addr), nil
+}
 
 // NewClient returns a Snapcast Snapserver client.
 func NewClient(addr string) Client {
@@ -70,6 +95,20 @@ func (c *client) SetDisconnectHandler(f func(error)) {
 }
 func (c *client) SetGroupStreamChangedHandler(f func(string, StreamID)) {
 	c.groupStreamChangedHandler = f
+}
+
+func (c *client) Host(ctx context.Context) (string, error) {
+	rsp := serverGetStatusResponse{}
+	if err := c.jsonrpcClient.Call(ctx, serverGetStatus, nil, &rsp); err != nil {
+		return "", fmt.Errorf("could not get server status: %w", err)
+	}
+
+	name := rsp.Server.Server.Host.Name
+	if name == "" {
+		name = rsp.Server.Server.Host.IP
+	}
+
+	return name, nil
 }
 
 func (c *client) Groups(ctx context.Context) ([]Group, error) {

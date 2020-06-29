@@ -16,23 +16,36 @@ import (
 
 var (
 	snapserverHost = flag.String("snapserver-host", "", "host of Snapserver")
-	snapserverPort = flag.Uint("snapserver-port", 1705, "port of Snapserver")
+	snapserverPort = flag.Uint("snapserver-port", snapcast.DefaultPort, "port of Snapserver")
 )
 
 func main() {
 	flag.Parse()
 
-	if *snapserverHost == "" {
-		log.Fatal("must set -snapserver-host")
-	}
-	snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+	var client snapcast.Client
+	if *snapserverHost != "" {
+		snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
 
-	client := snapcast.NewClient(snapserverAddr)
+		client = snapcast.NewClient(snapserverAddr)
+	} else {
+		var err error
+		client, err = snapcast.Discover()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	client.SetConnectHandler(func(client snapcast.Client) {
 		log.Print("connected")
 
 		ctx := context.Background()
+
+		host, err := client.Host(ctx)
+		if err != nil {
+			log.Fatalf("could not get host: %v", err)
+		}
+		fmt.Printf("host: %s\n\n", host)
+
 		groups, err := client.Groups(ctx)
 		if err != nil {
 			log.Fatalf("could not get groups: %v", err)

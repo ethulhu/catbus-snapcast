@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	snapserverHost = flag.String("snapserver-host", "", "host of Snapserver")
-	snapserverPort = flag.Uint("snapserver-port", 1705, "port of Snapserver")
+	snapserverHost = flag.String("snapserver-host", "", "host of Snapserver (optional)")
+	snapserverPort = flag.Uint("snapserver-port", snapcast.DefaultPort, "port of Snapserver")
 
 	groupName = flag.String("group", "", "name of group to set")
 	stream    = flag.String("stream", "", "name of stream")
@@ -25,15 +25,22 @@ var (
 func main() {
 	flag.Parse()
 
-	if *snapserverHost == "" {
-		log.Fatal("must set -snapserver-host")
-	}
 	if *groupName == "" || *stream == "" {
 		log.Fatal("must set -group and -stream")
 	}
 
-	snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
-	client := snapcast.NewClient(snapserverAddr)
+	var client snapcast.Client
+	if *snapserverHost != "" {
+		snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+
+		client = snapcast.NewClient(snapserverAddr)
+	} else {
+		var err error
+		client, err = snapcast.Discover()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	client.SetConnectHandler(func(client snapcast.Client) {
 		log.Print("connected")

@@ -14,10 +14,14 @@ type (
 	Client interface {
 		// Connect connects to the Snapserver and blocks forever, reconnecting as needed.
 		Connect()
+
 		// SetConnectHandler sets the handler that will be called for each successful connection.
 		SetConnectHandler(func(Client))
 		// SetDisconnectHandler sets the handler that will be called after each disconnection.
 		SetDisconnectHandler(func(error))
+
+		// Host returns either the IP or hostname of the Snapserver.
+		Host(context.Context) (string, error)
 
 		// Groups returns the list of groups managed by the Snapserver.
 		Groups(context.Context) ([]Group, error)
@@ -62,4 +66,8 @@ type (
 		Percent int
 		Muted   bool
 	}
+)
+
+const (
+	DefaultPort = 1705
 )

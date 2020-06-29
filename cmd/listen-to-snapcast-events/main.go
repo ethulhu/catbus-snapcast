@@ -13,20 +13,25 @@ import (
 )
 
 var (
-	host = flag.String("host", "", "host")
-	port = flag.Uint("port", 0, "port")
+	snapserverHost = flag.String("snapserver-host", "", "host of Snapserver")
+	snapserverPort = flag.Uint("snapserver-port", snapcast.DefaultPort, "port of Snapserver")
 )
 
 func main() {
 	flag.Parse()
 
-	if *host == "" || *port == 0 {
-		log.Fatal("must set -host and -port")
+	var client snapcast.Client
+	if *snapserverHost != "" {
+		snapserverAddr := fmt.Sprintf("%v:%v", *snapserverHost, *snapserverPort)
+
+		client = snapcast.NewClient(snapserverAddr)
+	} else {
+		var err error
+		client, err = snapcast.Discover()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-
-	addr := fmt.Sprintf("%v:%v", *host, *port)
-
-	client := snapcast.NewClient(addr)
 
 	client.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
 		log.Printf("group %v changed to stream %v", groupID, stream)

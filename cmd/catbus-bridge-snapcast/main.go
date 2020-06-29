@@ -25,6 +25,8 @@ var (
 	mqttClientID = flag.String("mqtt-client-id", "catbus-bridge-snapcast", "the client ID passed to the MQTT broker")
 )
 
+var host string
+
 func main() {
 	flag.Parse()
 
@@ -39,8 +41,23 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	snapserverAddr := fmt.Sprintf("%v:%v", config.SnapserverHost, config.SnapserverPort)
-	snapserver := snapcast.NewClient(snapserverAddr)
+	var snapserver snapcast.Client
+	if config.SnapserverHost != "" {
+		snapserverPort := config.SnapserverPort
+		if snapserverPort == 0 {
+			snapserverPort = snapcast.DefaultPort
+		}
+
+		snapserverAddr := fmt.Sprintf("%v:%v", config.SnapserverHost, snapserverPort)
+
+		snapserver = snapcast.NewClient(snapserverAddr)
+	} else {
+		var err error
+		snapserver, err = snapcast.Discover()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	brokerURI := mqtt.URI(config.BrokerHost, config.BrokerPort)
 	brokerOptions := mqtt.NewClientOptions()
@@ -61,9 +78,16 @@ func main() {
 	broker := mqtt.NewClient(brokerOptions)
 
 	snapserver.SetConnectHandler(func(snapserver snapcast.Client) {
-		log.Printf("connected to Snapserver %s", snapserverAddr)
-
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+		var err error
+		host, err = snapserver.Host(ctx)
+		if err != nil {
+			log.Printf("could not get Snapserver host: %v", err)
+			return
+		}
+		log.Printf("connected to Snapserver %q", host)
+
 		streams, err := snapserver.Streams(ctx)
 		if err != nil {
 			log.Printf("could not list Snapserver streams: %v", err)
@@ -99,7 +123,7 @@ func main() {
 		}
 	})
 	snapserver.SetDisconnectHandler(func(err error) {
-		log.Printf("disconnected from Snapserver %s: %v", snapserverAddr, err)
+		log.Printf("disconnected from Snapserver %q: %v", host, err)
 	})
 	snapserver.SetGroupStreamChangedHandler(func(groupID string, stream snapcast.StreamID) {
 		if groupID != config.SnapcastGroupID {
@@ -116,7 +140,7 @@ func main() {
 	log.Printf("connecting to MQTT broker %v", brokerURI)
 	_ = broker.Connect()
 
-	log.Printf("connecting to Snapserver %v", snapserverAddr)
+	log.Printf("connecting to Snapserver")
 	snapserver.Connect()
 }
 
