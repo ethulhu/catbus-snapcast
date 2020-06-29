@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
+/catbus-bridge-snapcast
 /config.json
 /listen-to-jsonrpc2-events
 /listen-to-snapcast-events
-/catbus-bridge-snapcast
+/server-status
 result
