@@ -10,7 +10,7 @@ buildGoModule rec {
   version = "latest";
   goPackagePath = "go.eth.moe/catbus-snapcast";
 
-  modSha256 = "09jafsc871raczzd5gjjybrcc93w7fnsm5w0spqjjnkhhpgbiw2a";
+  modSha256 = "0s31r2ccf5n53l0qpg8z94rbjb1aakkkkzhc6hh32ggmnp8blmsl";
 
   preBuild = ''
     go generate ./...
